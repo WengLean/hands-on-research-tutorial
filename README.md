@@ -61,6 +61,6 @@ AI科研指南，旨在帮助科研人员利用人工智能技术来提升科学
 
 添加如下微信，了解更多最新信息。
 
-<img src="./img/wechat.png" alt="Image" width="50%">
+<div style="text-align: center;">   <img src="./img/wechat.png" alt="Image" width="50%"> </div>
 
 添加微信记得备注，如果是已工作，备注：姓名-城市-岗位。如果学生，备注：姓名-学校-年级。**备注没有自我介绍不通过**

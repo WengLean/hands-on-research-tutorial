@@ -20,7 +20,7 @@
 <div style="width: 100%;">   <img src="./imgs/0_prepare_env.png" alt="Image" /> </div>
 <center>
 
-### 1. 文本生成
+### 2. 文本生成
 
 让我们使用语言模型生成文本。语言模型是单词序列上的概率分布。语言模型可以简单地进行训练来预测句子中的下一个单词。语言模型擅长理解和生成文本。我们可以制定许多任务，包括摘要、问答、提取数据、翻译，并将完成其中的一些任务。我们将研究语言模型完成文本的能力，具体而言我们将为模型提供一些文本输入，然后让模型为我们返回完整的文本。https://dashscope.console.aliyun.com/playground
 
@@ -28,7 +28,7 @@
 <div style="width: 100%;">   <img src="./imgs/1_text_generatation.png" alt="Image" /> </div>
 <center>
 
-### 2. 代码编辑
+### 3. 代码编辑
 
 \# 创建一个 Python 函数，返回 5 个描述这门入门攻略的随机名字
 
@@ -64,4 +64,3 @@ for name in random_guide_names:
 <center>
 <div style="width: 100%;">   <img src="./imgs/2_code_generatation_1.png" alt="Image" /> </div>
 <center>
-

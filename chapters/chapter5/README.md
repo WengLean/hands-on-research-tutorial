@@ -1,13 +1,13 @@
 # 5. 如何开展和记录实验
 
-> 导读: 当我们开始训练多个具有不同超参数的模型，我们就需要对实验开始进行管理。我们将其分为三个部分：实验追踪、超参数搜索和配置设置。我们将使用 Weights & Biases 来演示实验记录和追踪；然后，我们将利用 Weights & Biases Sweeps 对训练超参数进行超参数搜索；最后，我们将使用 Hydra 来优雅地配置我们日益复杂的深度学习应用。
+> 导读: 当我们开始训练多个具有不同超参数的模型，我们就需要对实验开始进行管理。**我们将其分为三个部分：实验追踪、超参数搜索和配置设置**。我们将使用 Weights & Biases 来演示实验记录和追踪；然后，我们将利用 Weights & Biases Sweeps 对训练超参数进行超参数搜索；最后，我们将使用 Hydra 来优雅地配置我们日益复杂的深度学习应用。
 >
 > 本次课程目的在于能够让你了解并实践如何将实验管理工具整合到你的模型训练工作流程中。
-## 本教程目标：
+## 本教程目标
 1. 通过Weights & Biases管理实验记录
 2. 使用 Sweeps 执行超参数搜索。
 3. 使用 Hydra 管理复杂的配置。
-## 本教程内容：
+## 本教程内容
 ### 0. 安装
 
 ```python
@@ -18,7 +18,7 @@ conda install -n l8 -c conda-forge wandb
 conda install -c conda-forge hydra-core
 ```
 
-或者用pip install 库
+或者用`pip install` 库
 
 ### 1. 实验记录
 
@@ -185,7 +185,9 @@ wandb.run.log_artifact(artifact)
 
 ![](img/1-6.png)
 
-练习：撰写代码，以便您可以在训练时保存前 3 个最佳模型。提示：参见[这里](How to save all your trained model weights locally after every epoch.ipynb)。
+**练习**
+
+> 撰写代码，以便您可以在训练时保存前 3 个最佳模型。提示：参见[这里](How to save all your trained model weights locally after every epoch.ipynb)。
 
 如果我们有保存的模型，我们现在可以加载该模型。假设我们原来的加载过程是从本地保存的checkpoint加载：
 
@@ -299,7 +301,7 @@ wandb.agent(sweep_id, function=my_train_func)
 
 #### 课堂练习 
 
-修改以下代码，以便你可以在其上运行超参数优化（sweep）。选择 val_loss 作为你要优化的指标。为 batch_size、epochs 和 learning rate 选择合理的选项。 现在，对于 learning rate，使用一个分布，该分布在 exp(min) 和 exp(max) 之间进行采样，使得自然对数在 min 和 max 之间均匀分布。
+> 修改以下代码，以便你可以在其上运行超参数优化（sweep）。选择 val_loss 作为你要优化的指标。为 batch_size、epochs 和 learning rate 选择合理的选项。 现在，对于 learning rate，使用一个分布，该分布在 exp(min) 和 exp(max) 之间进行采样，使得自然对数在 min 和 max 之间均匀分布。
 
 将你的解决方案与[此处](https://docs.wandb.ai/guides/sweeps/add-w-and-b-to-your-code)的解决方案进行比较。
 
@@ -376,7 +378,9 @@ args = parser.parse_args()
 print(args.batch_size)
 ```
 
-练习：让脚本接收批处理大小（batch_size）、学习率（learning_rate）和丢弃率（dropout）作为参数，并为每个参数使用合适的类型。如果未提供这些参数，除了学习率（learning_rate）外，其他都应使用默认值，学习率是必须提供的。
+**练习**
+
+> 让脚本接收批处理大小（batch_size）、学习率（learning_rate）和丢弃率（dropout）作为参数，并为每个参数使用合适的类型。如果未提供这些参数，除了学习率（learning_rate）外，其他都应使用默认值，学习率是必须提供的。
 
 这样操作在当前情境下或许可行，但是一旦我们有上百个参数时，显式地为每个希望不同于默认值的参数指定值就会变得非常困难！要是能有一种方式将这些配置存储在一个文件中就好了。
 
@@ -582,7 +586,9 @@ def run(cfg: DictConfig):
 
 ```
 
-练习：展示你将用来实例化一个包含两个线性层的`torch.nn.Sequential`对象的`config.yaml`文件和`train.py`文件。
+**练习**
+
+> 展示你将用来实例化一个包含两个线性层的`torch.nn.Sequential`对象的`config.yaml`文件和`train.py`文件。
 
 针对yaml文件的解决[方案](https://www.sscardapane.it/tutorials/hydra-tutorial/#variable-interpolation),也可以直接看下面：
 
@@ -667,7 +673,9 @@ model:
     num_groups: -1
 ```
 
-练习：配置一个小型模型和一个大型模型。大型模型实例化一个torch.nn.Sequential对象，包含三个线性层；小型模型则包含两个线性层。将小型模型设为默认模型。
+**练习**
+
+> 配置一个小型模型和一个大型模型。大型模型实例化一个torch.nn.Sequential对象，包含三个线性层；小型模型则包含两个线性层,将小型模型设为默认模型。
 
 小贴士：Hydra与W&B的集成：今天我们已经了解了两个工具，W&B和Hydra。如何让这两个工具协同工作呢？这里有一些使用模式需要了解。
 

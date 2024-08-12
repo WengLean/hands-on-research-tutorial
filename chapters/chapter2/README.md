@@ -250,3 +250,11 @@ Git 是一个强大的工具，值得花一些时间来了解它的基础知识�
 我们的远程推送成功了。在这里我们可以看到修复分支中的新提交。
 
 ![](img/3_git_3.png)
+
+### 4.Codespace(推荐)
+
+一个更快的体验conda环境和vscode环境方法，免去了繁琐的安装步骤。推荐用这种方法快速验证上述流程。
+
+![image-20240812163821939](img/4_codespace_1.png)
+
+[Create new codespace (github.com)](https://github.com/codespaces/new)

@@ -64,3 +64,4 @@ for name in random_guide_names:
 <center>
 <div style="width: 100%;">   <img src="./imgs/2_code_generatation_1.png" alt="Image" /> </div>
 <center>
+

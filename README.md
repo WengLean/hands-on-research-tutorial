@@ -3,7 +3,7 @@
 3. **学习社区** ：一起学习打卡/面试技巧/如何选择offer/职场规则/简历修改/技术分享。欢迎加入[「AI科研指南」知识星球](https://wx.zsxq.com/dweb2/index/group/28885822425181) 。
 4. **转载须知** ：引用本项目文章请注明出处，发现恶意抄袭或搬运，会动用法律武器维护自己的权益。让我们一起维护一个良好的技术创作环境！
 
-![image-20240804110628122](img/camp.jpg)
+![image-20240804110628122](./img/camp.jpg)
 
 <center><font face="黑体" size=5><a href="https://mp.weixin.qq.com/s/O5P_f5LFTG-kBuLA3vbnLQ" title="超链接title">点击了解详情</a></font></center>
 
@@ -32,14 +32,14 @@
 > - [前言 这是一个什么样的教程？](./README.md)
 > - [01 AI的最新进展与科研应用](./chapters/chapter1/README.md)
 > - [02 如何掌握Python工程流程](./chapters/chapter2/README.md)
-> - [03 如何阅读人工智能研究论文](./chapters/chapter3/README.md) 
-> - [04 PyTorch 基础知识](./chapters/chapter4/README.md)
-> - [05 如何开展和记录实验](./chapters/chapter5/README.md)
-> - [06 如何产生新的研究想法](./chapters/chapter6/README.md)
-> - [07 论文的结构也有套路](./chapters/chapter7/README.md)
-> - [08 云端上的深度学习](./chapters/chapter8/README.md)
-> - [09 万事具备，只欠动手](./chapters/chapter9/README.md)
-> - [10 撰写论文心法](./chapters/chapter10/README.md)
+> - [03 PyTorch 基础知识](./chapters/chapter3/README.md)
+> - [04 云端上的深度学习](./chapters/chapter4/README.md)
+> - [05 如何阅读人工智能研究论文](./chapters/chapter5/README.md) 
+> - [06 如何开展和记录实验](./chapters/chapter6/README.md)
+> - [07 如何产生新的研究想法](./chapters/chapter7/README.md)
+> - [08 论文的结构也有套路](./chapters/chapter8/README.md)
+> - [09 撰写论文心法](./chapters/chapter9/README.md)
+> - [10 万事具备，只欠动手](./chapters/chapter10/README.md)
 > - [结语 在这之后呢?](./chapters/final/README.md) 
 
 ## 如何自学入门攻略

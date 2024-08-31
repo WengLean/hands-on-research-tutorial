@@ -1,404 +1,213 @@
-# 4. PyTorch 基础知识
+# 4. 云端上的深度学习
 
-> 导读: 什么是PyTorch？我们如何用PyTorch快速实现一个完整的神经网络训练流程？
+> **导读:** 当我们开始开发复杂模型时，尝试在本地计算机上训练模型通常不是一个可行的选择，因为我们本地的显存都比较受限制，而且也不是所有同学所在的实验室都有显卡资源。因此，比较推荐的方法是**在线上租服务器来训练**。
 >
-> 首先阅读官方 Pytorch 教程，然后将完成有关张量 (Tensor)、Autograd、神经网络和分类器训练/评估的练习。有些问题会要求实现几行代码，而其他问题会要求猜测操作的输出是什么，或者识别代码的问题。强烈建议您在参考解决方案中查找问题之前先亲自尝试这些问题。
+> 本次教程将学习如何**利用`AutoDL`构建解决方案**，具体来说我们将探索和使用容器实例。这些课程将以现场演示/代码演练的形式进行。我们将首先完成 `AutoDL` 设置，在那里我们将配置并连接到实例，并介绍一些工具，这些工具可以帮助改善开发体验。
 >
-> *注意：参考答案在./lecture4.ipynb上*
-## 本教程目标：
-1. 在 PyTorch 中执行张量运算。
-2. 了解 Autograd 背景下神经网络的后向和前向传递。
-3. 检测 PyTorch 训练代码中的常见问题。
-## 本教程内容：
-### 0. 快速开始
+> 下一步将是调整现有代码，以便它可以与 `GPU` 一起使用，从而大大加快计算过程（例如训练模型）。同时也将讨论几种进一步加快模型训练速度的方法。最后我们将对 `CheXzero` 代码库进行一些实际操作：**把代码添加到我们的实例中，并确保我们可以运行模型训练过程。**
+## 本教程目标
+1. 了解如何设置和连接到 `AutoDL` 容器实例进行深度学习。
+2. 学习如何修改深度学习代码以便在 `GPU` 上使用。
+3. 获得使用真实代码库运行模型训练过程的实际操作经验。
+## 本教程内容
 
-方法一：colab已经自动帮我们安装好了torch库，我们可以直接使用。建议可以直接先使用在线的编译器，先快速理解知识点。
+### `AutoDL` 快速开始
 
-![](img/0-1.png)
+登录网站，先注册
 
-方法二：[在vscode/pycharm上通过pip install 来安装torch,torchvision](https://www.bilibili.com/video/BV1hE411t7RN/?t=734&vd_source=6d9a3bf0aa736e90be2bf85ca031f921)
+![](img/1-1.png)
 
-### 1. Tensor
+#### 创建实例
 
-我们将从最基本的张量开始。首先，浏览官方张量教程[这里](https://pytorch.org/tutorials/beginner/blitz/tensor_tutorial.html)。
+注册后进入控制台，在我的实例菜单下，点击租用新实例
 
-> 张量是一种特殊的数据结构，与数组和矩阵非常相似。在PyTorch中，我们使用张量对模型的输入和输出以及模型的参数进行编码。张量与NumPy的 ndarray 类似，不同之处在于张量可以在GPU或其他专用硬件上运行以加速计算。
+![](img/1-2.png)
+
+在租用实例页面：选择**计费方式**，选择合适的主机，选择要创建实例中的GPU数量，选择镜像（内置了不同的深度学习框架），最后创建即可。
+
+![](img/1-3.png)
+
+创建完成后等待开机，今后主要用到的操作入口见截图中
+
+![](img/1-4.png)
+
+#### 上传数据
+
+开机后在这个正在运行中的实例上找到快捷工具：`JupyterLab`，点击打开，在下面的截图中找到上传按钮，即可上传数据。
+
+![](img/1-5.png)
+
+#### 终端训练
+
+在打开的`JupyterLab`页面中打开终端。
+
+![](img/1-6.png)
+
+在终端中执行Python命令等完成训练
+
+![](img/1-7.png)
+
+### 转换为使用 GPU
+
+你可以使用以下命令检查远程实例的主机名以及是否加载了GPU：
+
+```ssh
+nvidia-smi
+```
+
+这个命令非常有用，因为它可以显示你的GPU实际上是否被利用，这有助于调试机器学习程序。
+
+#### 环境设置
+
+`“conda list env”`命令列出了实例上可用的所有`conda`环境。此时我们将利用我们AMI附带的`“pytorch”`环境，使用以下命令在终端中激活预装环境：
+
+```
+source activate pytorch
+```
+
+我们使用“source activate”而不是“`conda activate`”，因为在实例首次连接时需要初始化`conda`。因此，以下命令产生相同的效果：
+
+```
+conda init
+conda activate pytorch
+```
+
+#### 代码设置
+
+我们将使用一些可以在此处找到的入门代码，在VS Code终端上将存储库克隆到实例上。
+
+具体来说，我们将处理`main.py`文件，该文件训练一个模型。我们想比较在不同情况下运行一个epoch所需的时间。因此，第一步是修改代码以包含计时。我们将导入time，使用time.time()函数来监控每个epoch所需的时间，然后打印结果，这将在主函数内的循环中进行。
+
+```python
+for epoch in range(1, args.epochs + 1):
+    t0 = time.time()
+    train(args, model, train_loader, optimizer, epoch)
+    t_diff = time.time() - t0
+    print(f"Elapsed time is {t_diff}")
+    test_loss, test_acc = test(model, test_loader)
+    scheduler.step()
+```
+
+#### 添加 `Wandb` 日志记录
+
+正如我们在前几讲中所做的那样，我们还将`Weights and Biases`合并到代码库中，以保持良好的实践。`conda`环境中尚未包含该库，因此我们必须在终端中键入“`conda install wandb`”来安装它。
+
+在`main.py`中，我们将导入`wandb`，使用配置中的训练和测试参数初始化`wandb`，然后记录相关信息。
+
+```python
+wandb.init(config={"train_args": train_kwargs, "test_args": test_kwargs})
+for epoch in range(1, args.epochs + 1):
+    t0 = time.time()
+    train(args, model, train_loader, optimizer, epoch)
+    t_diff = time.time() - t0
+    print(f"Elapsed time is {t_diff}")
+    test_loss, test_acc = test(model, test_loader)
+    scheduler.step()
+    wandb.log({"test_loss": test_loss, "test_acc": test_acc, "time_taken": t_diff}, step=epoch)
+```
+
+我们还需要确保在循环结束时添加一个日志记录结束命令。
+
+`wandb.finish()`
+
+一旦添加了这个，我们可以运行带有wandb日志记录的代码。此时，你还可以在代码库的开头添加一个登录语句，或提前使用`wandb-CLI`进行登录。
+
+#### GPU 调整
+
+如果我们现在运行代码，训练时间会相当慢，在终端中运行 `nvidia-smi` 可以揭示一些潜在的问题，比如GPU资源利用率不足、内存耗尽或者其他进程正在竞争GPU资源等，通过分析 `nvidia-smi` 的输出，可以更好地优化你的训练过程，提高效率和性能。
+
+尽管我们的实例拥有GPU，但我们仍然没有使用它们，代码本身必须设置为利用GPU。为此，我们将调整`main.py`文件中的现有入门代码。
+
+附：如果我们在没有GPU的实例（如`t2.micro`实例类型）上运行`nvidia-smi`命令，它会抛出一个错误，第一件事是检查CUDA是否可用。
+
+在解析器和参数创建并配置后，我们将在主函数中执行此检查。如果cuda可用，需要相应地定义设备，设置工作线程数和`shuffle`值，并更新训练和测试参数。
+
+```python
+use_cuda = torch.cuda.is_available()
+if use_cuda:
+    device = torch.device("cuda")
+    cuda_kwargs = {'num_workers': 1, 'shuffle': True}
+    train_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs)
+else:
+    device = torch.device("cpu")
+```
+
+接下来，我们必须将模型和数据（包括训练和测试数据）加载到设备上。这可以通过“`.to(device)`”函数来完成。我们可以在定义模型时将其移动到设备上。
+
+```python
+model = Net().to(device)
+```
+
+在处理训练和测试函数的循环时，可以将训练和测试数据移动到设备上。我们还需要更新函数以接收设备作为输入，并在主函数的循环中调用函数时包含设备。
+
+```python
+def train(args, model, train_loader, optimizer, epoch, device):
+    model.train()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        ...
+def test(model, test_loader, device):
+    model.eval()
+    test_loss = 0
+    correct = 0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            ...
+def main():
+    ...
+    for epoch in range(1, args.epochs + 1):
+        t0 = time.time()
+        train(args, model, train_loader, optimizer, epoch, device)
+        t_diff = time.time() - t0
+        print(f"Elapsed time is {t_diff}")
+        test_loss, test_acc = test(model, test_loader, device)
+        scheduler.step()
+        wandb.log({"test_loss": test_loss, "test_acc": test_acc, "time_taken": t_diff}, step=epoch)
+    ...
+
+```
+
+现在我们使用了GPU，代码运行速度比以前快得多，每个epoch应该大约需要10秒钟来运行。
+
+#### 提高速度
+
+此时，我们应该思考这个问题：如何使其更快？我们将讨论几种可能的想法。
+
+**想法1：更多的GPU**
+
+如果我们使用了所有的GPU容量，那么选择一个具有更多GPU的新实例类型可能是有益的。然而，这里并不是这种情况。
+
+**想法2：增加批处理大小以使用更多的GPU**
+
+也许我们应该尝试将批处理大小从默认的64增加到128。理由是我们只使用了约20%的GPU存储，因此我们可以在每步中使用更多的存储。我们可以通过运行以下命令来尝试这一点：
+
+```python
+python main_working.py -batch-size=128
+```
+
+事实证明，这种变化可能不会对训练速度产生显著影响（可能对较小/较慢的GPU实例如P2s产生更大影响）。因为这里的模型非常小，瓶颈不在于模型计算，而在于内存瓶颈，这引出了我们的最后一个想法。
+
+**想法3：更改工作线程数**
+
+早些时候，当我们建立cuda参数时，我们将工作线程数设置为1，我们可以尝试增加这个数量。
+
+如果我们将工作线程数设置得过高，如100可能无法工作。相反，我们应该尝试为此实例推荐的最佳数量，即16。
+
+**增加工作线程数的理由是，更多的工作线程将帮助你更快地加载数据，即在GPU完成一个小批次的前向和后向传递后，工作线程已经准备好下一个批次，而不是在上一个批次完全完成后才开始加载数据。**
+
+我们可以看到，这对数据加载器有影响，因为工作线程数作为参数传递给它。
+
+事实证明，这种变化在缩小内存瓶颈和减少训练时间方面是有效的。此外，还可以通过多线程训练过程来优化数据加载。
+
+### 跑一个实际的代码库
+
+现在我们将过渡到处理一个代码库CDLab，我们的目标是让`run_train.py`文件成功运行。我们可以继续使用之前的实例，但我们将有一个新的环境代码库等。
+
+**练习**: 
+
+> 将这个代码库参考这个[具体的教程](HowToRunCDLab.md)  [(HowToRunCDLab.md]（*github上的附带文件*）
 >
-> 如果您熟悉 ndarrays，那么您就会熟悉Tensor API。如果没有，请按照此下面的问题进行操作。最好可以不看答案操作一遍，先思考一下，再去搜索一下，最后比对一下正确的操作，这样子效果是最好的。
+> 在租的服务器上跑通训练和测试流程。
 
-1. 将二维列表 `[[5,3], [0,9]]` 转换为一个张量
-2. 使用区间 `[0, 1)` 上均匀分布的随机数创建形状 `(5, 4)` 的张量`t`
-3. 找出张量`t`所在的设备及其数据类型。
-4. 创建形状 `(4,4)` 和 `(4,4)` 的两个随机张量，分别称为`u`和`v`。将它们连接起来形成形状为 `(8, 4)` 的张量。
-5. 连接 `u` 和 `v` 以创建形状 `(2, 4, 4)` 的张量。
-6. 连接 `u` 和 `v` 形成一个张量，称为形状 `(4, 4, 2)` 的 `w`。
-7. 索引 `w` 位于 `3, 3, 0`，将该元素称为`e`。
-8. 会在 `u` 或 `v` 的哪一个中找到 `w`？并核实。
-9. 创建一个形状为 `(4, 3)` 的全为 `1` 的张量 `a`。对`a`进行元素级别的自乘操作。
-10. 向`a`添加一个额外的维度（新的第 `0` 维度）。
-11. 执行 `a` 与转置矩阵的乘法。
-12. `a.mul(a)` 会产生什么结果？
-13. `a.matmul(a.T)` 会产生什么结果？
-14. `a.mul(a.T)` 的结果是什么？
-15. 猜猜下面会打印什么。验证一下
-
-```python
-t = torch.ones(5)
-n = t.numpy()
-n[0] = 2
-print(t)
-```
-
-16. 下面会打印什么？
-
-```python
-t = torch.tensor([2., 1., 1., 1., 1.])
-t.add(2)
-t.add_(1)
-print(n)
-```
-
-### 2. Autograd 和神经网络
-
-接下来，我们学习[自动梯度](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html)教程和[神经网络](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html)教程。
-
-神经网络(NN) 是对某些输入数据执行的嵌套函数的集合。这些函数由参数（由权重和偏差组成）定义，这些参数在PyTorch中存储在张量中。可以使用 torch.nn 包构建神经网络。
-
-训练神经网络分两步进行：
-
-- 前向传播：在前向传播中，神经网络对正确的输出做出最佳猜测，它通过每个函数运行输入数据来进行猜测。
-- 反向传播：在反向传播中，神经网络根据其猜测的误差按比例调整其参数。它通过从输出向后遍历、收集误差相对于函数参数（梯度）的导数并使用梯度下降来优化参数来实现这一点。
-
-神经网络的典型训练过程如下：
-
-- 定义具有一些可学习参数（或权重）的神经网络
-- 迭代输入数据集
-- 通过网络处理输入
-- 计算损失（输出距离正确还有多远）
-- 将梯度传播回网络参数
-- 更新网络的权重，通常使用简单的更新规则：权重=权重-学习率梯度
-
-有了这些教程，我们就可以尝试以下练习了！假设我们有以下起始代码，将下面这段代码复制到你的编辑器中：
-
-```python
-import torch
-from torchvision.models import resnet18, ResNet18_Weights
-model = resnet18(weights=ResNet18_Weights.DEFAULT)
-data = torch.rand(1, 3, 64, 64)
-labels = torch.rand(1, 1000)
-```
-
-17. 使用数据对模型进行前向传递并将其保存为 `preds`。
-
-18. `preds` 的形状应该是什么？验证你的猜测。
-
-19. 将 `resnet18` 的 `conv1` 属性的权重参数保存为 `w`。打印 `w` 因为我们稍后需要它（请注意，我的 `w` 不会与你的相同）。
-
-20. `w` 的 `grad` 属性应该是什么？请验证。
-
-21. 创建一个[交叉熵](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)损失对象，并用它来使用 `labels` 和 `preds` 计算损失，保存为 `loss`。打印 `loss`，因为我们稍后需要它。
-
-22. 打印最后一次产生 `loss` 损失的数学运算。
-
-23. 执行反向传播。
-
-24. `w` 应该改变吗？检查 #3 的输出。
-
-25. `w` 的 `grad` 属性会与 #4 不同吗？并验证。
-
-26. `loss` 的 `grad` 属性应该返回什么？验证一下。
-
-27. `loss` 的 `requires_grad` 属性应该是什么？验证一下。
-
-28. `labels` 的 `requires_grad` 属性应该是什么？验证一下。
-
-29. 如果你再次执行反向传播会发生什么？
-
-30. 创建一个学习率 (`lr=1e-2`) 和动量 (`momentum=0.9`) 的 [SGD](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html#torch.optim.SGD) 优化器对象，并执行一步。
-
-31. `w` 是否应该改变？检查第3题的输出。
-
-32. `loss` 是否应该改变？检查第5题的输出。
-
-33. 将所有可训练参数的梯度清零。
-
-34. `w` 的 `grad` 属性应该是什么？验证一下。
-
-35. 在不运行的情况下，判断以下代码是否会成功执行。
-
-```python
-data1 = torch.zeros(1, 3, 64, 64)
-data2 = torch.ones(1, 3, 64, 64)
-
-predictions1 = model(data1)
-predictions2 = model(data2)
-l = torch.nn.CrossEntropyLoss()
-loss1 = l(predictions1, labels)
-loss2 = l(predictions2, labels)
-
-loss1.backward()
-loss2.backward()
-```
-
-36. 判断以下代码是否会成功执行。
-
-```python
-data1 = torch.zeros(1, 3, 64, 64)
-data2 = torch.ones(1, 3, 64, 64)
-
-predictions1 = model(data1)
-predictions2 = model(data1)
-
-l = torch.nn.CrossEntropyLoss()
-loss1 = l(predictions1, labels)
-loss2 = l(predictions2, labels)
-
-loss1.backward()
-loss2.backward()
-```
-
-37. 判断以下代码是否会成功执行。
-
-```python
-data1 = torch.zeros(1, 3, 64, 64)
-data2 = torch.ones(1, 3, 64, 64)
-
-predictions1 = model(data1)
-predictions2 = model(data2)
-
-l = torch.nn.CrossEntropyLoss()
-loss1 = l(predictions1, labels) # 注意是predictions1
-loss2 = l(predictions1, labels) # 注意是predictions1
-
-loss1.backward()
-loss2.backward()
-```
-
-38. 对于不能执行的代码，你如何修改其中一个 `.backward` 行使其工作？
-
-39. 以下代码的输出是什么？
-
-```python
-predictions1 = model(data)
-l = torch.nn.CrossEntropyLoss()
-loss1 = l(predictions1, labels)
-loss1.backward(retain_graph=True)
-
-w = model.conv1.weight.grad[0][0][0][0]
-a = w.item()
-
-loss1.backward()
-b = w.item()
-
-model.zero_grad()
-c = w.item()
-
-print(b//a,c)
-```
-
-40. 以下代码的输出是什么？
-
-```python
-predictions1 = model(data)
-l = torch.nn.CrossEntropyLoss()
-loss1 = l(predictions1, labels)
-loss1.backward(retain_graph=True)
-
-a = model.conv1.weight.grad[0][0][0][0]
-
-loss1.backward()
-b = model.conv1.weight.grad[0][0][0][0]
-
-model.zero_grad()
-c = model.conv1.weight.grad[0][0][0][0]
-
-print(b//a,c)
-```
-
-41. 以下代码有什么问题？
-
-```python
-learning_rate = 0.01
-for f in net.parameters():
-    f.data.sub(f.grad.data * learning_rate)
-```
-
-42. 按正确的顺序排列训练循环的以下步骤（有多种正确答案，但你在教程中会看到一种典型的设置）：以下代码的输出是什么？
-
-`optimizer.step()`, `optimizer.zero_grad()`, `loss.backward()`, `output = net(input)`, `loss = criterion(output, target)`
-
-43. 以下代码的输出是什么？
-
-```python
-net = resnet18(weights=ResNet18_Weights.DEFAULT)
-data = torch.rand(1, 3, 64, 64)
-target = torch.rand(1, 1000)
-optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-criterion = torch.nn.CrossEntropyLoss()
-orig = net.conv1.weight.clone()[0, 0, 0, 0]
-weight = net.conv1.weight[0, 0, 0, 0]
-# 1
-optimizer.zero_grad()
-print(f"{weight == orig}")
-
-# 2
-output = net(data)
-loss = criterion(output, target)
-print(f"{weight == orig}")
-
-# 3
-loss.backward()
-print(f"{weight == orig}")
-
-# 4
-optimizer.step()
-print(f"{weight == orig}")
-
-#True
-#True
-#True
-#False
-```
-
-44. 我们将实现有一个隐藏层的神经网络。这个网络将接受一个32x32的灰度图像输入，展开它，通过一个有100个输出特征的仿射变换，应用 `ReLU` 非线性，然后映射到目标类别（10）。实现初始化和前向传递，完成以下代码。使用 `nn.Linear`, `F.relu`, `torch.flatten`
-
-```python
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-
-class Net(nn.Module):
-
-    def __init__(self):
-        super(Net, self).__init__()
-        # 在这里补充代码
-
-    def forward(self, x):
-        # 在这里补充代码
-        return x
-```
-
-45. 用两行代码验证你能通过上述网络进行前向传递。
-
-46. 在不运行代码的情况下，猜测以下语句的结果是什么？
-
-```python
-net = Net()
-print(len(list(net.parameters())))
-```
-
-47. 获取网络参数的名称
-
-48. 以下语句指的是哪个网络层？它将评估什么？
-
-```python
-print(list(net.parameters())[1].size())
-```
-
-49. 以下示意图包含了实现一个神经网络所需的所有信息。实现初始化和前向传递，完成以下代码。使用 `nn.Conv2d`, `nn.Linear`, `F.max_pool2d`, `F.relu`, `torch.flatten`。提示：`ReLU` 在子采样操作后和前两个全连接层之后应用。
-
-![cnn](img/cnn.png)
-
-```python
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-
-class Net(nn.Module):
-
-    def __init__(self):
-        super(Net, self).__init__()
-        # your code here
-
-    def forward(self, x):
-        # your code here
-        return x
-```
-
-50. 修改上述代码，使用 `nn.MaxPool2d` 代替 `F.max_pool2d`
-
-51. 尝试通过将第一个卷积层的输出通道数从6增加到12来增加网络的宽度。你还需要改变什么？
-
-### **3. 训练分类器**
-
-接下来，我们进入教程的最后一部分：[Cifar10教程](https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html)。这个教程通过以下步骤来训练一个图像分类器：
-
-- 使用torchvision加载和归一化 (normalize) CIFAR10训练和测试数据集 
-- 定义一个卷积神经网络 
-- 定义一个损失函数
-- 在训练数据上训练网络
-- 在测试数据上测试网络
-
-完成上述教程后，回答以下问题：
-
-52. 以下数据集加载代码可以运行，但代码中是否有错误？这些错误的影响是什么？如何修复这些错误？
-
-```python
-import torch
-from torchvision import datasets, transforms
-transform = transforms.Compose(
-   [transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-batch_size = 4
-
-trainset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=2)
-
-testset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
-```
-
-53. 编写两行代码从数据加载器中获取随机的训练图像（假设上面的错误已经修复）。
-
-54. 以下训练代码可以运行，但代码中是否有错误（包括计算效率低下）？这些错误的影响是什么？如何修复这些错误？
-
-```python
-running_loss = 0.0
-for epoch in range(2):    # loop over the dataset multiple times
-  for i, data in enumerate(trainloader, 0):
-      # get the inputs; data is a list of [inputs, labels]
-      inputs, labels = data
-      # forward + backward + optimize
-      outputs = net(inputs)
-      loss = criterion(outputs, labels)
-      loss.backward()
-      optimizer.step()
-
-      # print statistics
-      running_loss += loss
-      if i % 2000 == 1999:    # print every 2000 mini-batches
-          print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
-          running_loss = 0.0
-          break
-```
-
-55. 以下评估代码可以运行，但其中是否存在错误（包括计算效率低下）？这些错误的影响是什么？如何修正这些错误？
-
-```python
-correct = 0
-total = 0
-# since we're not training, we don't need to calculate the gradients for our outputs
-for data in testloader:
-    images, labels = data
-    # calculate outputs by running images through the network
-    outputs = net(images)
-    # the class with the highest energy is what we choose as prediction
-    _, predicted = torch.max(outputs.data, 1)
-    total += labels.size(0)
-    correct += (predicted == labels).sum()
-
-print(f'Accuracy of the network on the 10000 test images: {100 * correct // total} %')
-```
-
-### 4. 总结
-
-切记以上代码可能刚开始看会有些困难，但这很正常，一定要克制住自己的好奇心，不要直接看答案，哪怕实在想不出来，也应该先把自己的思考和尝试写下来。然后再去看答案，比对自己的输出和答案有什么区别(敏感的人可能发现了，这和前向传播和计算损失很像)，确实是这样，就是需要不断训练自己的大脑。
-
-熟悉PyTorch可能需要一些时间，这很正常！PyTorch是深度学习开发的强大工具。完成上面的练习后，可以在[这里](https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html)查看快速入门教程，该教程将涵盖更多方面，包括保存和加载模型以及数据集和数据加载器。在学习API的过程中，记住关键的使用模式可能会很有用；我喜欢的一个PyTorch备忘录可以在[这里](https://github.com/pytorch/tutorials/blob/master/beginner_source/PyTorch Cheat.md)找到。
-
-这就是我们关于PyTorch基础知识的全部内容！
-
-恭喜你 - 现在你已经具备了开始解决利用PyTorch的更复杂深度学习代码的能力。

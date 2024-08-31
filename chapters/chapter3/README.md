@@ -1,222 +1,404 @@
-# 3. 如何阅读人工智能研究论文
+# 3. PyTorch 基础知识
 
-> 导读: 在刚迈入科研时，人人都说读论文很重要，但是很少有人能完整地教你应该如何读论文。论文不仅揭示了行业的最新进展和趋势，而且为我们提供了改进技术和解决复杂问题的思路。然而，由于学术论文常常包含密集的技术细节和专业术语，新手可能会觉得门槛较高。
+> 导读: 什么是PyTorch？我们如何用PyTorch快速实现一个完整的神经网络训练流程？
 >
-> 本课程旨在真实展示在学习人工智能新领域时所需的步骤，我希望在这门课程结束时，你能够在阅读人工智能研究论文时掌握可以使用的工作流程。
-## 本教程目标
-1. 进行文献检索以识别与感兴趣的主题相关的论文
-2. 阅读深度/机器学习研究论文并总结其贡献
-## 本教程内容
-### 0. 方法
+> 首先阅读官方 Pytorch 教程，然后将完成有关张量 (Tensor)、Autograd、神经网络和分类器训练/评估的练习。有些问题会要求实现几行代码，而其他问题会要求猜测操作的输出是什么，或者识别代码的问题。强烈建议您在参考解决方案中查找问题之前先亲自尝试这些问题。
+>
+> *注意：参考答案在./lecture4.ipynb上*
+## 本教程目标：
+1. 在 PyTorch 中执行张量运算。
+2. 了解 Autograd 背景下神经网络的后向和前向传递。
+3. 检测 PyTorch 训练代码中的常见问题。
+## 本教程内容：
+### 0. 快速开始
 
-我将把阅读人工智能研究论文的过程分为两部分：**广泛阅读和深度阅读**。没有固定的先后顺序，这里有一个建议的顺序：
-
-1. 针对完全没有接触过深度学习或机器学习的小白，建议先挑一个简单的任务进行深度阅读(代码加论文，可参考我的回答：[研究生真的应该研一大量读文献吗？](https://www.zhihu.com/question/353178050/answer/3197251465)
-2. 针对有一定基础的同学来说，开始调研新的领域时，建议从广泛阅读着手，然后再精挑一两篇进行深度阅读。
-
-广泛阅读意味着浏览文献，并阅读各个论文的小部分内容。广泛阅读的目标是构建和改进我们对研究主题的整体认知。一旦在广泛阅读中确定了你想要深入理解的关键技术点，就可以开始进行深入阅读：我一般是指完全理解代码细节以及论文每一个公式。广泛阅读和深入阅读都是必需的，且可能互相迭代，尤其是在你刚开始的时候。
-
-我将以我自己研究的方向-语义分割(semantic segmentation)为例，作为我们想要探讨的假设主题，非常具体地向你介绍如何进行广泛阅读和深度阅读。
-
-### 1. 深度阅读
-
-让我们从简单的搜索引擎(谷歌/必应/百度)或者大模型搜索“语义分割 (semantic segmentation)”开始。建议一开始可以从中文看起，毕竟比较好理解，基本概念都掌握之后，要多用英文搜索，现在有翻译，也比较方便。
+方法一：colab已经自动帮我们安装好了torch库，我们可以直接使用。建议可以直接先使用在线的编译器，先快速理解知识点。
 
 ![](img/0-1.png)
 
-我们可以先了解有关语义分割的定义。在脑海里建立了一个初步的印象，就是对图像像素进行分类。但是在代码层面如何实现你肯定还是一头雾水，接下来就是需要具体跑代码。接下来介绍两个寻找代码非常有用的链接：
+方法二：[在vscode/pycharm上通过pip install 来安装torch,torchvision](https://www.bilibili.com/video/BV1hE411t7RN/?t=734&vd_source=6d9a3bf0aa736e90be2bf85ca031f921)
 
-#### 1.1[Papers With Code](https://paperswithcode.com/)
+### 1. Tensor
 
-Papers with Code 是一个社区项目，这个网站创建包含机器学习论文、代码、数据集、方法和评估表的免费开放资源。我自己以及身边人在科研过程中也会经常用到这个网站，推荐给大家。
+我们将从最基本的张量开始。首先，浏览官方张量教程[这里](https://pytorch.org/tutorials/beginner/blitz/tensor_tutorial.html)。
 
-![](img/0-2.png)
-
-我们需要开始做笔记，所以让我们打开一个文档（可以用自己经常用的，我推荐用在线的一些文档管理比如飞书，或者记录在本地，也可以用typora软件）。
-
-![](img/0-3.png)
-
-让我们看到下面带有代码的论文的 Benchmarks (基准测试)部分。下面列举了在不同数据集下，最先进的模型，以及论文和代码。
-
-![](img/0-4.png)
-
-点击ADE20K，会跳转到下面这个链接，说明在2023年出现了一种最先进的方法（你可能听说过 SOTA），方法称之为ViT-Adapter-L。排行榜非常有用：它向我们展示了包括和类似变体在内的指标，其次我们需要了解它们是什么。
-
-![](img/0-7.png)
-
-再回到主页往下看，还有经常用的框架，这个框架就是一个比较完整的系统，一般来说代码量比较多，一下子比较难看懂底层实现原理，一开始上手可能会有些难。但是，有共同的实现平台，因此在这个上面也比较容易和其他方法做对比。
-
-下面是用到的数据集。
-
-![](img/0-5.png)
-
-这是实现最多的论文，一般来说都是比较经典的，有代表性的论文，比如大名鼎鼎的UNet，并且也有代码和论文实现。
-
-![](img/0-6.png)
-
-我们就可以点击UNet的code链接，可以看到也有好多种实现的方法。
-
-**注意：**
-
-> 1.一般来说，目前学术界主流的框架都是用pytorch，并且pytorch使用起来也比较方便，用的人多也意味着很多问题都能在公开的论坛里找到解决方法
+> 张量是一种特殊的数据结构，与数组和矩阵非常相似。在PyTorch中，我们使用张量对模型的输入和输出以及模型的参数进行编码。张量与NumPy的 ndarray 类似，不同之处在于张量可以在GPU或其他专用硬件上运行以加速计算。
 >
-> 2.建议一开始可以从一个简单的代码学起，就是不用一上来就去学习框架。这有助于弄懂每一个模块，等弄懂了简单的代码，再去研究如何使用框架效率会更高。
+> 如果您熟悉 ndarrays，那么您就会熟悉Tensor API。如果没有，请按照此下面的问题进行操作。最好可以不看答案操作一遍，先思考一下，再去搜索一下，最后比对一下正确的操作，这样子效果是最好的。
 
-![](img/0-8.png)
+1. 将二维列表 `[[5,3], [0,9]]` 转换为一个张量
+2. 使用区间 `[0, 1)` 上均匀分布的随机数创建形状 `(5, 4)` 的张量`t`
+3. 找出张量`t`所在的设备及其数据类型。
+4. 创建形状 `(4,4)` 和 `(4,4)` 的两个随机张量，分别称为`u`和`v`。将它们连接起来形成形状为 `(8, 4)` 的张量。
+5. 连接 `u` 和 `v` 以创建形状 `(2, 4, 4)` 的张量。
+6. 连接 `u` 和 `v` 形成一个张量，称为形状 `(4, 4, 2)` 的 `w`。
+7. 索引 `w` 位于 `3, 3, 0`，将该元素称为`e`。
+8. 会在 `u` 或 `v` 的哪一个中找到 `w`？并核实。
+9. 创建一个形状为 `(4, 3)` 的全为 `1` 的张量 `a`。对`a`进行元素级别的自乘操作。
+10. 向`a`添加一个额外的维度（新的第 `0` 维度）。
+11. 执行 `a` 与转置矩阵的乘法。
+12. `a.mul(a)` 会产生什么结果？
+13. `a.matmul(a.T)` 会产生什么结果？
+14. `a.mul(a.T)` 的结果是什么？
+15. 猜猜下面会打印什么。验证一下
 
-这里我点击，第二个Pytorch-UNet，就会跳转到下面这个网页，就有操作流程，可以按照操作流程一步一步的操作。
+```python
+t = torch.ones(5)
+n = t.numpy()
+n[0] = 2
+print(t)
+```
 
-![](img/0-9.png)
+16. 下面会打印什么？
 
-#### 1.2 [Github](https://github.com/)
+```python
+t = torch.tensor([2., 1., 1., 1., 1.])
+t.add(2)
+t.add_(1)
+print(n)
+```
 
-GitHub 在深度学习科研中扮演着至关重要的角色，提供了一个开源平台，使得研究人员可以共享他们的代码、数据集、模型和实验结果。这种开放性和共享精神促进了科研成果的交流和复用，加速了科学进步的步伐。
+### 2. Autograd 和神经网络
 
-具体使用方法如下，在搜索框，搜索自己研究方向的关键词，比如"semantic segmentation/语义分割"，建议中英文都可以结合着搜一下。
+接下来，我们学习[自动梯度](https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html)教程和[神经网络](https://pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html)教程。
 
-![](img/0-10.png)
+神经网络(NN) 是对某些输入数据执行的嵌套函数的集合。这些函数由参数（由权重和偏差组成）定义，这些参数在PyTorch中存储在张量中。可以使用 torch.nn 包构建神经网络。
 
-**star数量越多，说明这个代码仓库越受欢迎。**awsome系列一般很受欢迎，因为这类代码库的特点就是把很多资料和代码整理到一起，类似于paper with code，会比paper with code资料更加丰富。
+训练神经网络分两步进行：
 
-![](img/0-11.png)
+- 前向传播：在前向传播中，神经网络对正确的输出做出最佳猜测，它通过每个函数运行输入数据来进行猜测。
+- 反向传播：在反向传播中，神经网络根据其猜测的误差按比例调整其参数。它通过从输出向后遍历、收集误差相对于函数参数（梯度）的导数并使用梯度下降来优化参数来实现这一点。
 
-#### 1.3 跑通代码
+神经网络的典型训练过程如下：
 
-上面已经介绍了如何寻找代码，但是很多同学还是会一脸懵，面对这么多的代码，我怎么知道该实现哪一个代码？或者面对一个代码仓库，我看不懂他的操作流程。这很正常，跟着别人操作。下面介绍一个可以实操的方法，在bilibili上输入关键词，"语义分割/semantic segmantation"。
+- 定义具有一些可学习参数（或权重）的神经网络
+- 迭代输入数据集
+- 通过网络处理输入
+- 计算损失（输出距离正确还有多远）
+- 将梯度传播回网络参数
+- 更新网络的权重，通常使用简单的更新规则：权重=权重-学习率梯度
 
-![](img/0-12.png)
+有了这些教程，我们就可以尝试以下练习了！假设我们有以下起始代码，将下面这段代码复制到你的编辑器中：
 
-**注意：**
+```python
+import torch
+from torchvision.models import resnet18, ResNet18_Weights
+model = resnet18(weights=ResNet18_Weights.DEFAULT)
+data = torch.rand(1, 3, 64, 64)
+labels = torch.rand(1, 1000)
+```
 
-> 现在你大概已经能了解了语义分割的基础概念，因此可以不用花太多时间在学习概念，阅读论文。
->
-> 一定要明确一件事，深度阅读阶段最重要的是什么？深入代码，完整地走通整个任务的流程细节。
+17. 使用数据对模型进行前向传递并将其保存为 `preds`。
 
+18. `preds` 的形状应该是什么？验证你的猜测。
 
+19. 将 `resnet18` 的 `conv1` 属性的权重参数保存为 `w`。打印 `w` 因为我们稍后需要它（请注意，我的 `w` 不会与你的相同）。
 
-因此可以跟着UP的视频一步一步去实现代码。在实现的过程中难免会遇到一些bug，该怎么解决呢？可以参考参考第二章节如何解决问题。
+20. `w` 的 `grad` 属性应该是什么？请验证。
 
-跑通完代码，就需要花几天时间，配合大模型去搞懂每一行代码的意思，在这个过程中也要边做好记录：
+21. 创建一个[交叉熵](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)损失对象，并用它来使用 `labels` 和 `preds` 计算损失，保存为 `loss`。打印 `loss`，因为我们稍后需要它。
 
-![](img/0-13.png)
+22. 打印最后一次产生 `loss` 损失的数学运算。
 
-这个过程大概花上一周时间就可以了。一周之后，通过这个流程，你就建立起了对这个领域的基本的认知。
+23. 执行反向传播。
 
-要注意的是：如果是有代码基础，视频学习取决于个人需要，可以在了解了基本概念之后，直接通过那两个链接去寻找合适简单的代码实现，就可以了解任务细节了。
+24. `w` 应该改变吗？检查 #3 的输出。
 
-#### 1.4 精读论文
+25. `w` 的 `grad` 属性会与 #4 不同吗？并验证。
 
-当我们弄懂一篇论文对应的代码之后，我们就可以很轻松的阅读对应的文章，以及理解文章中提到一些抽象的名词，比如“跳跃连接”，“多层特征融合”等等。所以**真正精度一篇文章，最好的方法是结合代码来读**，因此精度第一篇文章花费的时间和精力会很多，这个是很正常的事，一开始切记囫囵吞枣图快，一开始要把基础打牢，就要把很多基础的知识点，弄懂弄透。
+26. `loss` 的 `grad` 属性应该返回什么？验证一下。
 
-但是一次性也很难弄懂所有的知识点，因此我建议采取迭代的方式来精读论文：
+27. `loss` 的 `requires_grad` 属性应该是什么？验证一下。
 
-- 首先要明确在你的第一次阅读中，你不会理解超过研究论文的10%。这篇论文可能需要我们阅读另一篇更基础的论文（这可能需要阅读第三篇论文，以此类推；可能是一层又一层！）。
-- 然后，在你的第二次阅读中，你可能会理解20%的内容。要理解论文的100%可能需要一个重大的飞跃，可能是因为它写得不好，细节不足，或者技术/数学上过于先进。因此，我们的目标是尽可能地理解论文——理解70-80%的论文是一个好目标。
+28. `labels` 的 `requires_grad` 属性应该是什么？验证一下。
 
-我们将逐步阅读UNet论文，我会带你了解我的第一次阅读经历。在阅读论文时能够进行标记或评论是个好方法，你可以使用浏览器自带的编辑器或者是WPS软件来高亮PDF。https://arxiv.org/pdf/1505.04597v1
+29. 如果你再次执行反向传播会发生什么？
 
-**首先阅读引言部分**，引言是开始论文的好方式，因为它们通常是概括性说明了文章的背景和方法。（在后续的教程中，我将分享如何写好论文的引言）
+30. 创建一个学习率 (`lr=1e-2`) 和动量 (`momentum=0.9`) 的 [SGD](https://pytorch.org/docs/stable/generated/torch.optim.SGD.html#torch.optim.SGD) 优化器对象，并执行一步。
 
-![](img/1-10.png)
+31. `w` 是否应该改变？检查第3题的输出。
 
-![](img/1-11.png)
+32. `loss` 是否应该改变？检查第5题的输出。
 
-这种使用不同颜色高亮来区分文本的方法非常有效，它帮助我们清晰地识别出论文中的问题、解决方案和主要贡献。通过黄色高亮显示问题或挑战，粉红色高亮显示解决这些挑战的方案，蓝色则用于突出论文的主要贡献，你已经建立了一种直观的方式来组织和理解信息。
+33. 将所有可训练参数的梯度清零。
 
-你所描述的交替使用黄色和粉红色高亮的模式表明，论文是通过引入一个普遍问题开始的，然后讨论解决这个问题的方法，接着是这个解决方案中的问题，然后是对该问题的又一个解决方案。深入到四个层级，论文明确指出了它解决的具体问题。
+34. `w` 的 `grad` 属性应该是什么？验证一下。
 
-随后可以看到，论文的贡献是针对更一般问题的更一般解决方案中的特定问题的特定解决方案，这是典型的结构。
+35. 在不运行的情况下，判断以下代码是否会成功执行。
 
-我们可以总结我们对这一问题-解决方案链的理解：
+```python
+data1 = torch.zeros(1, 3, 64, 64)
+data2 = torch.ones(1, 3, 64, 64)
 
-![](img/1-12.png)
+predictions1 = model(data1)
+predictions2 = model(data2)
+l = torch.nn.CrossEntropyLoss()
+loss1 = l(predictions1, labels)
+loss2 = l(predictions2, labels)
 
-论文中写得比较好的引言应该让你能够提取出这样的问题-解决方案链。
+loss1.backward()
+loss2.backward()
+```
 
-**对于相关工作(related work)**我们可以不用精读，因为我们缺少 10-20 篇论文的背景信息，我们需要阅读这些论文来填补空白。这是论文中我们不会深入理解的 20-30%。
+36. 判断以下代码是否会成功执行。
 
-对于方法部分，我们可以做的是记录我们还不太理解的概念列表：如果有指向论文参考文献的链接，我们会将其复制过来。看起来可能是这样的：
+```python
+data1 = torch.zeros(1, 3, 64, 64)
+data2 = torch.ones(1, 3, 64, 64)
 
-![](img/1-13.png)
+predictions1 = model(data1)
+predictions2 = model(data1)
 
-因此，你将创建一个需要学习的概念列表，以及每个概念的相关论文（如果论文指定了任何概念）。当阅读完一遍之后，就可以专门去学习这些概念，然后再重新阅读一遍论文，会有一种豁然开朗的感觉。
+l = torch.nn.CrossEntropyLoss()
+loss1 = l(predictions1, labels)
+loss2 = l(predictions2, labels)
 
-让我们继续阅读**方法部分和实验部分**：
+loss1.backward()
+loss2.backward()
+```
 
-![](img/1-14.png)
+37. 判断以下代码是否会成功执行。
 
-最后，我们来读一下**论文的结论**。
+```python
+data1 = torch.zeros(1, 3, 64, 64)
+data2 = torch.ones(1, 3, 64, 64)
 
-你可能会注意到，尽管结论与摘要和引言相似，但我们对这些单词的理解已经比开始阅读本文时更深一些了。正如我之前提到的，第一次阅读论文时，我们预计实际上只能理解其中的 10%，特别是如果我们不了解正在构建的论文的背景的话。；使用同样的方法，我们可以开始浏览“To Understand”列表。
+predictions1 = model(data1)
+predictions2 = model(data2)
 
-### 2. 广度阅读
+l = torch.nn.CrossEntropyLoss()
+loss1 = l(predictions1, labels) # 注意是predictions1
+loss2 = l(predictions1, labels) # 注意是predictions1
 
-**广度阅读，一般是在调研/寻找灵感的时候比较需要，或者是在写论文整理素材的时候。**如何有效的阅读，也很重要，但是很多人把握不好这个度，比如很多人非常重视，恨不得天天花大量时间去阅读论文，做大量的笔记。也有另一个极端，就是丝毫不重视论文，大致瞄一眼，只能是留了个大概的印象，后面在写论文/想要引用的时候，却找不到应该引用哪个，以致对整个领域都没有一个全面的认知。
+loss1.backward()
+loss2.backward()
+```
 
-对于初学者而言，我还是十分建议在完成上面深度阅读的步骤之后，再开展广度阅读，之后就可以交替进行。
+38. 对于不能执行的代码，你如何修改其中一个 `.backward` 行使其工作？
 
-下面具体介绍如何适度的去阅读一篇论文，还是以paper with code上的论文为例，我们已经复现了一个语义分割的代码，一般来说是比较经典的网络，我们要跟踪最新的方法，就得靠阅读论文。
+39. 以下代码的输出是什么？
 
-以下面ViT-Adapter-L方法为例。
+```python
+predictions1 = model(data)
+l = torch.nn.CrossEntropyLoss()
+loss1 = l(predictions1, labels)
+loss1.backward(retain_graph=True)
 
-![](img/0-7.png)
+w = model.conv1.weight.grad[0][0][0][0]
+a = w.item()
 
-点击方法名称，就会跳到下面这个页面：
+loss1.backward()
+b = w.item()
 
-![](img/1-2.png)
+model.zero_grad()
+c = w.item()
 
-点击PDF，就能跳转到论文原文，我们来读一下摘要。
+print(b//a,c)
+```
 
-![](img/1-3.png)
+40. 以下代码的输出是什么？
 
-我们对里面有些名词不熟悉很正常，所以不要试图能理解所有句子，在我们的笔记中记下关键信息。
+```python
+predictions1 = model(data)
+l = torch.nn.CrossEntropyLoss()
+loss1 = l(predictions1, labels)
+loss1.backward(retain_graph=True)
 
-![](img/1-4.png)
+a = model.conv1.weight.grad[0][0][0][0]
 
-在这里，我们只是整理了摘要中的关键信息。很多知识点，关键词不理解也没有关系，如果实在好奇，可以问chatgpt或者其他大模型。最重要的是了解最新的方法，只要大概在脑海里留下一个印象，大概用了什么方法，性能怎么样就好。然后我们就可以对多篇文章，进行类似的总结。
+loss1.backward()
+b = model.conv1.weight.grad[0][0][0][0]
 
-可以继续在笔记中添加条目，也可以采用另外一种方式，也是我当时读论文采用的方式，可以用其他方式来管理阅读，比如excel，一篇论文就是一条记录，分别记录主题，时间，期刊/会议，标题，相关工作，结果等
+model.zero_grad()
+c = model.conv1.weight.grad[0][0][0][0]
 
-![](img/1-5.png)
+print(b//a,c)
+```
 
-![](img/1-6.png)
+41. 以下代码有什么问题？
 
-除了用表格记录，还可以用一些其他的软件记录，这里就不过多赘述了，因为工具本质上都是术，最重要的是要去行动。
+```python
+learning_rate = 0.01
+for f in net.parameters():
+    f.data.sub(f.grad.data * learning_rate)
+```
 
- **谷歌学术**
+42. 按正确的顺序排列训练循环的以下步骤（有多种正确答案，但你在教程中会看到一种典型的设置）：以下代码的输出是什么？
 
-接下来我们可以利用谷歌学术。让我们首先输入搜索词：**semantic segmantation**.
+`optimizer.step()`, `optimizer.zero_grad()`, `loss.backward()`, `output = net(input)`, `loss = criterion(output, target)`
 
-![](img/1-1.png)
+43. 以下代码的输出是什么？
 
-谷歌学术按相关性排序，并提供了一些有用的细节包括论文被引用的次数。我们运气不错——搜索结果的顶部有一篇综述论文，综述论文通常会回顾和描述一个问题领域的现状，并经常包括挑战和机遇。
+```python
+net = resnet18(weights=ResNet18_Weights.DEFAULT)
+data = torch.rand(1, 3, 64, 64)
+target = torch.rand(1, 1000)
+optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+criterion = torch.nn.CrossEntropyLoss()
+orig = net.conv1.weight.clone()[0, 0, 0, 0]
+weight = net.conv1.weight[0, 0, 0, 0]
+# 1
+optimizer.zero_grad()
+print(f"{weight == orig}")
 
-综述可能不总是最新的、全面的或完全准确的，但特别是如果我们对某个领域不熟悉，它可以帮助我们快速了解。
+# 2
+output = net(data)
+loss = criterion(output, target)
+print(f"{weight == orig}")
 
-考虑到我们看到一些相对较新的论文（2023年）达到了状态最优（SOTA），我们不想看一篇2019年的综述，可以通过明确搜索综述并使用左侧的时间线侧边栏过滤掉2023年以前的结果，看看能否找到一个更近的综述。
+# 3
+loss.backward()
+print(f"{weight == orig}")
 
-![](img/1-7.png)
+# 4
+optimizer.step()
+print(f"{weight == orig}")
 
-这一篇有pdf版本，我们来看看结果。
+#True
+#True
+#True
+#False
+```
 
-![](img/1-8.png)
+44. 我们将实现有一个隐藏层的神经网络。这个网络将接受一个32x32的灰度图像输入，展开它，通过一个有100个输出特征的仿射变换，应用 `ReLU` 非线性，然后映射到目标类别（10）。实现初始化和前向传递，完成以下代码。使用 `nn.Linear`, `F.relu`, `torch.flatten`
 
-你可能会发现，对于综述论文来说，摘要通常不会提供和普通研究文章一样的具体细节。然而，综述论文通常更易于理解（至少在某些部分），因为它们包括了更多关于主题的背景信息。我们来打开这篇文章看看。
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-阅读一篇综述文章时，我们应该如何进行？在这个阶段，我们广泛阅读，可以选择性地阅读内容。对于这篇论文，我读了：
 
-- 综述的图1，这通常很好展示了综述的关键点。
-- 第二页的“贡献”部分，这篇综述主要总结了哪些内容
-- 最后一页的“结论与未来方向”。
+class Net(nn.Module):
 
-这些相对较短的部分应该足够我们现阶段使用，花点时间自己阅读这些部分，看看你是否能总结出8-10个要点的笔记。
+    def __init__(self):
+        super(Net, self).__init__()
+        # 在这里补充代码
 
-![](img/1-9.png)
+    def forward(self, x):
+        # 在这里补充代码
+        return x
+```
 
-目前为止，我们已经有至少 1-2 页的笔记了！你的笔记和我的可能包含许多你第一次遇到的术语……“encoder-decoder architecture,” “language modeling task,” “cross-modal skip connections,” 或者 “subword-based tokenization techniques” 。这些术语可能超出了我们当前的理解范围，但这没关系，因为我们是在广泛阅读。
+45. 用两行代码验证你能通过上述网络进行前向传递。
 
-### 3.结论
+46. 在不运行代码的情况下，猜测以下语句的结果是什么？
 
-我希望一步一步演示在刚开始接触一个新领域时，如何读论文，以使得让你有把握深入研究新的问题。
+```python
+net = Net()
+print(len(list(net.parameters())))
+```
 
-广读和精读的过程都是迭代的：我们经常需要重新搜索和重读，边读边做笔记的行为可以极大地帮助建立和交叉检查你对这个领域的认知。
+47. 获取网络参数的名称
+
+48. 以下语句指的是哪个网络层？它将评估什么？
+
+```python
+print(list(net.parameters())[1].size())
+```
+
+49. 以下示意图包含了实现一个神经网络所需的所有信息。实现初始化和前向传递，完成以下代码。使用 `nn.Conv2d`, `nn.Linear`, `F.max_pool2d`, `F.relu`, `torch.flatten`。提示：`ReLU` 在子采样操作后和前两个全连接层之后应用。
+
+![cnn](img/cnn.png)
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class Net(nn.Module):
+
+    def __init__(self):
+        super(Net, self).__init__()
+        # your code here
+
+    def forward(self, x):
+        # your code here
+        return x
+```
+
+50. 修改上述代码，使用 `nn.MaxPool2d` 代替 `F.max_pool2d`
+
+51. 尝试通过将第一个卷积层的输出通道数从6增加到12来增加网络的宽度。你还需要改变什么？
+
+### **3. 训练分类器**
+
+接下来，我们进入教程的最后一部分：[Cifar10教程](https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html)。这个教程通过以下步骤来训练一个图像分类器：
+
+- 使用torchvision加载和归一化 (normalize) CIFAR10训练和测试数据集 
+- 定义一个卷积神经网络 
+- 定义一个损失函数
+- 在训练数据上训练网络
+- 在测试数据上测试网络
+
+完成上述教程后，回答以下问题：
+
+52. 以下数据集加载代码可以运行，但代码中是否有错误？这些错误的影响是什么？如何修复这些错误？
+
+```python
+import torch
+from torchvision import datasets, transforms
+transform = transforms.Compose(
+   [transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+batch_size = 4
+
+trainset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=2)
+
+testset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+```
+
+53. 编写两行代码从数据加载器中获取随机的训练图像（假设上面的错误已经修复）。
+
+54. 以下训练代码可以运行，但代码中是否有错误（包括计算效率低下）？这些错误的影响是什么？如何修复这些错误？
+
+```python
+running_loss = 0.0
+for epoch in range(2):    # loop over the dataset multiple times
+  for i, data in enumerate(trainloader, 0):
+      # get the inputs; data is a list of [inputs, labels]
+      inputs, labels = data
+      # forward + backward + optimize
+      outputs = net(inputs)
+      loss = criterion(outputs, labels)
+      loss.backward()
+      optimizer.step()
+
+      # print statistics
+      running_loss += loss
+      if i % 2000 == 1999:    # print every 2000 mini-batches
+          print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
+          running_loss = 0.0
+          break
+```
+
+55. 以下评估代码可以运行，但其中是否存在错误（包括计算效率低下）？这些错误的影响是什么？如何修正这些错误？
+
+```python
+correct = 0
+total = 0
+# since we're not training, we don't need to calculate the gradients for our outputs
+for data in testloader:
+    images, labels = data
+    # calculate outputs by running images through the network
+    outputs = net(images)
+    # the class with the highest energy is what we choose as prediction
+    _, predicted = torch.max(outputs.data, 1)
+    total += labels.size(0)
+    correct += (predicted == labels).sum()
+
+print(f'Accuracy of the network on the 10000 test images: {100 * correct // total} %')
+```
+
+### 4. 总结
+
+切记以上代码可能刚开始看会有些困难，但这很正常，一定要克制住自己的好奇心，不要直接看答案，哪怕实在想不出来，也应该先把自己的思考和尝试写下来。然后再去看答案，比对自己的输出和答案有什么区别(敏感的人可能发现了，这和前向传播和计算损失很像)，确实是这样，就是需要不断训练自己的大脑。
+
+熟悉PyTorch可能需要一些时间，这很正常！PyTorch是深度学习开发的强大工具。完成上面的练习后，可以在[这里](https://pytorch.org/tutorials/beginner/basics/quickstart_tutorial.html)查看快速入门教程，该教程将涵盖更多方面，包括保存和加载模型以及数据集和数据加载器。在学习API的过程中，记住关键的使用模式可能会很有用；我喜欢的一个PyTorch备忘录可以在[这里](https://github.com/pytorch/tutorials/blob/master/beginner_source/PyTorch Cheat.md)找到。
+
+这就是我们关于PyTorch基础知识的全部内容！
+
+恭喜你 - 现在你已经具备了开始解决利用PyTorch的更复杂深度学习代码的能力。

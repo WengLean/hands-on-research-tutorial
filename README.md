@@ -3,7 +3,7 @@
 3. **学习社区** ：一起学习打卡/面试技巧/如何选择offer/职场规则/简历修改/技术分享。欢迎加入[「AI科研指南」知识星球](https://wx.zsxq.com/dweb2/index/group/28885822425181) 。
 4. **转载须知** ：引用本项目文章请注明出处，发现恶意抄袭或搬运，会动用法律武器维护自己的权益。让我们一起维护一个良好的技术创作环境！
 
-![image-20240804110628122](./img/camp.jpg)
+![image-20240804110628122](./img/camp.png)
 
 <center><font face="黑体" size=5><a href="https://mp.weixin.qq.com/s/O5P_f5LFTG-kBuLA3vbnLQ" title="超链接title">点击了解详情</a></font></center>
 

@@ -1,0 +1,50 @@
+一、windows及其他系统conda换源方法：
+参见：https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/
+
+
+
+
+
+二、windows及其他系统pip换源方法：
+
+
+
+
+2.1 Windows
+
+2.1.1 临时使用：pip install -i https://pypi.tuna.tsinghua.edu.cn/simple {包名}
+
+2.1.2 永久使用：
+第一步: 在C:\Users\Administrator 目录下 创建pip文件夹
+第二步：在第一步创建的文件夹下（C:\Users\Administrator\pip）创建pip.ini文件
+第三步：记事本编辑保存pip.ini文件内容为以下部分：
+
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple/
+[install]
+trusted-host = pypi.tuna.tsinghua.edu.cn
+
+
+
+
+
+
+2.2 MacOS系统
+2.2.1 临时使用：pip install -i https://pypi.tuna.tsinghua.edu.cn/simple {包名}
+2.2.2 永久使用：
+
+执行以下语句
+
+cd ~
+mkdir .pip
+cd .pip
+vi pip.conf
+
+pip.conf写入
+
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple/
+[install]
+trusted-host = pypi.tuna.tsinghua.edu.cn
+
+保存pip.conf

@@ -1,24 +1,100 @@
 # 6. 如何开展和记录实验
 
-> 导读: 当我们开始训练多个具有不同超参数的模型，我们就需要对实验开始进行管理。**我们将其分为三个部分：实验追踪、超参数搜索和配置设置**。我们将使用 Weights & Biases 来演示实验记录和追踪；然后，我们将利用 Weights & Biases Sweeps 对训练超参数进行超参数搜索；最后，我们将使用 Hydra 来优雅地配置我们日益复杂的深度学习应用。
+> 导读: 当我们开始训练多个具有不同超参数的模型，我们就需要对实验开始进行管理。***\*我们将其分为三个部分：实验追踪、和配置设置\****。我们将使用SwanLab来演示实验记录和追踪；然后，学习如何配置我们深度学习应用的参数。
 >
-> 本次课程目的在于能够让你了解并实践如何将实验管理工具整合到你的模型训练工作流程中。
+> 本次课程目的在于能够让你了解并实践如何将实验管理工具整合到你的模型训练工作流程中。本节还是在上一个图像分类任务代码的基础上继续进行改进。
 ## 本教程目标
-1. 通过Weights & Biases管理实验记录
-2. 使用 Sweeps 执行超参数搜索。
-3. 使用 Hydra 管理复杂的配置。
+1. 通过SwanLab管理实验记录
+2. 了解参数配置
 ## 本教程内容
-### 0. 安装
+### 0. 训练流程
+
+这是第2节课的代码，如果不熟悉，再回去看视频讲解，多看几遍
 
 ```python
-conda create --name l8 python=3.9
-conda install -n l8 ipykernel --update-deps --force-reinstall
-conda install -n l8 pytorch torchvision torchaudio -c pytorch-nightly
-conda install -n l8 -c conda-forge wandb
-conda install -c conda-forge hydra-core
-```
+import torch
+import torchvision
+import torchvision.transforms as transforms
 
-或者用`pip install` 库
+# 1.构建数据集
+transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+batch_size = 4
+
+trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                        download=True, transform=transform)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                          shuffle=True, num_workers=2)
+
+testset = torchvision.datasets.CIFAR10(root='./data', train=False,
+                                       download=True, transform=transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                         shuffle=False, num_workers=2)
+
+classes = ('plane', 'car', 'bird', 'cat',
+           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
+# 2.定义神经网络
+import torch.nn as nn
+import torch.nn.functional as F
+
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
+net = Net()
+
+# 3.定义 Loss 函数和优化器
+import torch.optim as optim
+
+criterion = nn.CrossEntropyLoss() # risk loss
+optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+# 4.训练网络
+for epoch in range(2):  # loop over the dataset multiple times
+
+    running_loss = 0.0
+    for i, data in enumerate(trainloader, 0):
+        if (i > 5):
+          break # 为了增加训练速度，正常需要训练所有数据
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data
+
+        # zero the parameter gradients
+        optimizer.zero_grad()
+
+        # forward + backward + optimize
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        # print statistics
+        running_loss += loss.item()
+        if i % 2000 == 1999:    # print every 2000 mini-batches
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
+            running_loss = 0.0
+
+print('Finished Training')
+```
 
 ### 1. 实验记录
 
@@ -26,322 +102,170 @@ conda install -c conda-forge hydra-core
 
 **Logging**
 
-通常来说我们在训练的过程中，通常会打印我们正在使用的超参数，以及模型训练时的损失+准确性。
+通常来说我们在训练的过程中，通常会打印我们正在使用的超参数，以及模型训练时的损失+准确性。就比如上面打印的结果一般。我们能看到每一个epoch的损失是多少。下面展示我们如何用SwanLab管理实验记录
+
+> SwanLab是一款开源、轻量级的AI实验跟踪工具，提供了一个跟踪、比较、和协作实验的平台，旨在加速AI研发团队100倍的研发效率。其提供了友好的API和漂亮的界面，结合了超参数跟踪、指标记录、在线协作、实验链接分享、实时消息通知等功能，让您可以快速跟踪ML实验、可视化过程、分享给同伴。借助SwanLab，科研人员可以沉淀自己的每一次训练经验，与合作者无缝地交流和协作，机器学习工程师可以更快地开发可用于生产的模型。
 
 ```python
-import random
+import swanlab
+swanlab.login()
 
-def run_training_run_txt_log(epochs, lr):
-    print(f"Training for {epochs} epochs with learning rate {lr}")
-    offset = random.random() / 5
-   
-    for epoch in range(2, epochs):
-        # 模拟训练过程
-        acc = 1 - 2 ** -epoch - random.random() / epoch - offset
-        loss = 2 ** -epoch + random.random() / epoch + offset
-        print(f"epoch={epoch}, acc={acc}, loss={loss}")
+def train(epochs, learning_rate):
+  print(f"Training for {epochs} epochs with learning rate {learning_rate}")
 
-# 进行一次学习率为0.1的训练运行
-run_training_run_txt_log(epochs=10, lr=0.01)
+  swanlab.init(
+        # Set the project where this run will be logged
+        project="example", 
+        # Track hyperparameters and run metadata
+        config={
+        "learning_rate": learning_rate,
+        "epochs": epochs,
+        })
+  
+  
+  # 构造数据集
+  transform = transforms.Compose(
+      [transforms.ToTensor(),
+      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+  batch_size = 4
+
+  trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                          download=True, transform=transform)
+  trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+  
+                                            shuffle=True, num_workers=2)
+  # 定义网络
+  net = Net()
+
+  # 定义损失和优化器
+  criterion = nn.CrossEntropyLoss()
+  optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9) # 学习率作为一个可以调整的参数
+
+
+  # 训练网络
+  for epoch in range(epochs):  # epochs作为参数传入
+
+      running_loss = 0.0
+      for i, data in enumerate(trainloader, 0):
+          # get the inputs; data is a list of [inputs, labels]
+          if (i > 5):
+            break
+          inputs, labels = data
+
+          # zero the parameter gradients
+          optimizer.zero_grad()
+
+          # forward + backward + optimize
+          outputs = net(inputs)
+          loss = criterion(outputs, labels)
+          loss.backward()
+          optimizer.step()
+          running_loss += loss.item()
+      print(f"epoch={epoch}, loss={running_loss}")
+      swanlab.log({"loss": running_loss})
+      running_loss = 0.0
+  swanlab.finish()
+train(epochs=10, learning_rate=0.01)
 ```
 
-下面展示我们如何用Weights & Biases管理实验记录
+我们在这里使用 3 个函数：swanlab.init、swanlab.log 和 swanlab.finish——它们各自的作用是什么？
 
-#### Weights and Biases
+\- 我们在脚本开头调用一次 swanlab.init() 来初始化新项目。这会创建新的运行并启动后台进程来同步数据。
 
-Weights & Biases 是：
+\- 我们调用 swanlab.log(dict) 将指标、媒体或自定义对象的字典记录到步骤中。我们可以看到我们的模型和数据如何随着时间的推移而演变。
 
-> “开发者构建更好模型、更快开发的机器学习平台。使用 W&B 的轻量级、可互操作的工具，可以快速追踪实验、版本化和迭代数据集、评估模型性能、复现模型、可视化结果并发现回归问题，并与同事分享发现。
->
-> 你使用哪种实验追踪工具不是一个标准答案：有人喜欢 Weights and Biases，简称 wandb：你可以按其最初的意图读作 w-and-b，或者读作 wan-db（因为它像数据库一样保存东西）。替代选择包括 Tensorboard、Neptune 和 Tensorboard。”
+\- 我们调用swanlab.finish来使运行完成，并完成所有数据的上传。
 
-让我们开始使用wandb吧！
+让我们看看在 swanlab 网站上看到了什么，应该看到我们的准确性和损失曲线。
 
-系统可能会提示您创建账户，然后添加您的token。
+<img src="img/1-1.png" style="zoom:50%;" />
 
-```python
-# Log in to your W&B account
-import wandb
-wandb.login()
-```
-
-我们现在将在上面提供的函数进行修改，展示如何使用wandb。
-
-```python
-import random
-
-def run_training_run(epochs, lr):
-      print(f"Training for {epochs} epochs with learning rate {lr}")
-
-      wandb.init(
-            # Set the project where this run will be logged
-            project="example", 
-            # Track hyperparameters and run metadata
-            config={
-            "learning_rate": lr,
-            "epochs": epochs,
-            })
-      
-      offset = random.random() / 5
-      print(f"lr: {lr}")
-      for epoch in range(2, epochs):
-            # simulating a training run
-            acc = 1 - 2 ** -epoch - random.random() / epoch - offset
-            loss = 2 ** -epoch + random.random() / epoch + offset
-            print(f"epoch={epoch}, acc={acc}, loss={loss}")
-            wandb.log({"acc": acc, "loss": loss})
-
-      wandb.finish()
-
-run_training_run(epochs=10, lr=0.01)
-```
-
-我们在这里使用 3 个函数：wandb.init、wandb.log 和 wandb.finish——它们各自的作用是什么？
-
-- 我们在脚本开头调用一次 wandb.init() 来初始化新项目。这会在 W&B 中创建新的运行并启动后台进程来同步数据。
-- 我们调用 wandb.log(dict) 将指标、媒体或自定义对象的字典记录到步骤中。我们可以看到我们的模型和数据如何随着时间的推移而演变。
-- 我们调用wandb.finish来使运行完成，并完成所有数据的上传。
-
-让我们看看在 wandb 网站上看到了什么，应该看到我们的准确性和损失曲线。
-
-![](img/1-1.png)
-
-在我们的信息选项卡中，我们还应该能够看到配置和摘要，告诉我们 acc 和 loss 的最终值。
-
-![](img/1-2.png)
+在我们的信息选项卡中，我们还应该能够看到配置和摘要，告诉我们 loss 的最终值。
 
 我们已经获得了两个不错的功能：
 
-1. 能够看到循环每一步的准确性和损失如何变化。
+1. 能够看到循环每一步的损失如何变化。
 2. 能够看到与运行相关的配置（超参数）。
-3. 能够看到我们的运行最终获得的准确率acc和loss损失。
+3. 能够看到我们的运行最终获得的loss损失。
 
-#### 多次实验
+#### 参数进行配置
 
-我们现在要增加一些复杂性。当我们通常训练模型时，我们会尝试不同的超参数。我们将调整的最重要的超参数之一是学习率，另一个可能是训练的轮数（epochs）。那么我们如何记录多个运行呢？
+我们不希望用硬编码的路径名、模型名和超参数来训练深度学习模型。我们希望能够使用一个配置文件，根据使用的数据集、模型或配置进行修改。硬编码是什么？是指在编写程序时，直接将具体的值（如字符串、数字、路径等）写入源代码中，而不是通过变量、配置文件、数据库查询或其他动态方法来获取这些值。(这其实不是一个好习惯，但是经常有人这样做)
 
-```python
-def run_multiple_training_runs(epochs, lrs):
-    for epoch in epochs:
-        for lr in lrs:
-            run_training_run(epoch, lr)
+首先，让我们从一些错误的配置深度学习运行的方法开始。假设我们想从命令行控制数据集的 batch_size。可能在某台机器上工作时，你可以使用较大的 batch_size，而在另一台机器上则不行。最基本的做法是记住更改硬编码的 batch size。
 
-# Try different values for the learning rate
-epochs = [100, 120, 140]
-lrs = [0.1, 0.01, 0.001, 0.0001]
-run_multiple_training_runs(epochs, lrs)
+```
+batch_size = 128
+# batch_size = 4
 ```
 
-正如你所看到的，这使用了我们上面已经写好的函数，以不同的学习率和epoch多次调用它。让我们看看我们得到了什么。
+像上面那种方法并不是一个好的选择，因为每次都要去更改源码。
 
-我们可以访问 wandb 的网站并进入表格选项卡。
+第二种解决方案是在运行脚本时将`batch_size`的值作为参数传递进去。这样我们就可以根据所用的显卡来改变它。我们可以通过`sys.argv`使用命令行参数来实现这一点。
 
-![](img/1-3.png)
+使用 swanlab.config 保存你的训练配置，例如：
 
-在左边我们可以看到每一次的实验，点击进去，可以看到每一组的实验参数配置，比如我们选择第一组，happy-water-13，可以看到下面这个界面：
+超参数
 
-![](img/1-4.png)
+输入设置，例如数据集名称或模型类型
 
-#### 模型保存和加载
+实验的任何其他变量
 
-我们经过不懈的努力终于获得了我们期望的结果！现在我们决定要使用其中一个训练好的模型。我们可以在 W&B 上查找该运行的配置，然后重新训练模型并保存它！但是，如果我们在运行时就保存了与其关联的模型，那该多好，这样我们就可以直接加载它，对吗？
+swanlab.config 使你可以轻松分析你的实验并在将来复现你的工作。你还可以在SwanLab应用中比较不同实验的配置，并查看不同的训练配置如何影响模型输出。
 
-那么，我们应该如何实现这一点呢？我们可以使用 Weights & Biases 的 Artifacts 功能来跟踪数据集、模型、依赖项和结果，贯穿于整个机器学习流程的每一步。Artifacts 可以轻松获得文件更改的完整且可审核的历史记录。根据[文档](https://docs.wandb.ai/guides/artifacts)：
+### 2.设置实验配置
 
-Artifacts 可以被视为一个版本化的目录。Artifacts 要么是运行的输入，要么是运行的输出。常见的 artifacts 包括整个训练集和模型。可以将数据集直接存储到 artifacts 中，或者使用 artifact 引用指向其他系统中的数据，如 Amazon、或你自己的系统。
+config 通常在训练脚本的开头定义。当然，不同的人工智能工作流可能会有所不同，因此 config 也支持在脚本的不同位置定义，以满足灵活的需求。
 
-使用 4 行简单的代码来记录 wandb Artifacts非常容易：
+以下部分概述了定义实验配置的不同场景。
 
-```python
-wandb.init()
-artifact = wandb.Artifact(<enter_filename>, type='model')
-artifact.add_file(<file_path>)
-wandb.run.log_artifact(artifact)
+#### 2.1SwanLab中设置
+
+下面的代码片段演示了如何使用Python字典定义 config，以及如何在初始化SwanLab实验时将该字典作为参数传递：
+
 ```
-
-如果我们有一行用于保存 PyTorch 模型的代码：
-
-```python
-model_path = f"model_{epoch}.pt"
-torch.save(model.state_dict(), model_path)
-```
-
-我们可以修改它以将artifacts上传到 wandb 上。
-
-```python
-# Log the model to wandb
-model_path = f"model_{epoch}.pt"
-torch.save(model.state_dict(), model_path)
-artifact = wandb.Artifact(model_path, type='model')
-artifact.add_file(model_path)
-wandb.run.log_artifact(artifact)
-```
-
-现在我们可以看到我们的模型checkpoint保存在 W&B 中：
-
-![](img/1-5.png)
-
-我们还可以看到相关的元数据：
-
-![](img/1-6.png)
-
-**练习**
-
-> 撰写代码，以便您可以在训练时保存前 3 个最佳模型。提示：参见[这里](How to save all your trained model weights locally after every epoch.ipynb)。
-
-如果我们有保存的模型，我们现在可以加载该模型。假设我们原来的加载过程是从本地保存的checkpoint加载：
-
-```python
-model.load_state_dict(torch.load("model_9.pt"))
-```
-
-我们现在可以使用
-
-```python
-run = wandb.init()
-artifact = run.use_artifact('YOUR_PATH/model_9.pt:v1', type='model')
-artifact_dir = artifact.download()
-model.load_state_dict(torch.load(artifact_dir + "/model_9.pt"))
-```
-
-### 2. 超参数搜索
-
-当我们有多种超参数选择时，我们想要都尝试一下，这意味着使用不同的超参数值运行模型。
-
-#### 搜索选项
-
-我们可以决定如何采样超参数的值，包括贝叶斯优化、网格搜索和随机搜索。 在网格搜索中，我们为每个超参数定义一组可能的值，然后搜索会为每个可能的超参数值组合训练一个模型。 例如：使用 epochs = [100, 120, 140] 和 lrs = [0.1, 0.01, 0.001, 0.0001]，我们的网格将是 list(itertools.product(epochs, lrs))，即 [(100, 0.1), (100, 0.01), (100, 0.001), (100, 0.0001), (120, 0.1), (120, 0.01), (120, 0.001), (120, 0.0001), (140, 0.1), (140, 0.01), (140, 0.001), (140, 0.0001)]。 在随机搜索中，我们为每个超参数提供一个统计分布，从中采样值。在这里，我们通常会控制或限制使用的超参数组合数量。 在贝叶斯优化中，使用先前迭代的结果来决定下一组超参数值，采用一种序列模型优化（SMBO）算法。
-
-这种方法在参数数量增加时不太可扩展。
-
-#### Weights & Biases 超参数优化 (Sweeps)
-
-正如文档所述： “Weights & Biases 超参数优化有两个组件：控制器和一个或多个代理。控制器选择新的超参数组合。通常，控制器由 Weights & Biases 服务器管理。代理向 Weights & Biases 服务器查询超参数，并使用这些超参数进行模型训练。然后将训练结果报告给控制器。代理可以在一台或多台机器上运行一个或多个进程。”
-
-一旦我们有了 Weights & Biases 的训练代码，添加超参数优化只需三步：
-
-1. 定义超参数优化配置
-2. 初始化超参数优化（控制器）
-3. 启动超参数优化代理
-
-让我们看看它的实际操作。假设我们有以下代码：
-
-```python
-import wandb
-def my_train_func():
-    # read the current value of parameter "a" from wandb.config
-    wandb.init()
-    a = wandb.config.a
-
-    wandb.log({"a": a, "accuracy": a + 1})
-```
-
-```python
-sweep_configuration = {
-    "name": "my-awesome-sweep",
-    "metric": {"name": "accuracy", "goal": "maximize"},
-    "method": "grid",
-    "parameters": {
-        "a": {
-            "values": [1, 2, 3, 4]
-        }
-    }
-}
-```
-
-注意事项：
-
-- 使用的是网格搜索
-- 我们指定了要优化的指标——这仅被某些搜索策略和停止标准使用。请注意，我们必须在 Python 脚本中将变量 accuracy（在此示例中）记录到 W&B 中，这一点我们已经完成。
-- 我们为 “a” 指定了值。
-
-步骤 2：初始化超参数优化
-
-在这一步中，我们启动上述的超参数优化控制器：
-
-```python
-sweep_id = wandb.sweep(sweep=sweep_configuration, project='my-first-sweep')
-```
-
-步骤 3：启动超参数优化代理
-
-最后，我们启动代理，提供超参数优化 ID、要调用的函数以及（可选）要运行的次数（count）。
-
-```python
-wandb.agent(sweep_id, function=my_train_func, count=4)
-```
-
-把[以上步骤](https://docs.wandb.ai/ref/python/agent)放到一起
-
-```python
-import wandb
-sweep_configuration = {
-    "name": "my-awesome-sweep",
-    "metric": {"name": "accuracy", "goal": "maximize"},
-    "method": "grid",
-    "parameters": {
-        "a": {
-            "values": [1, 2, 3, 4]
-        }
-    }
+import swanlab
+swanlab.login()
+# 定义一个config字典
+config = {
+  "hidden_layer_sizes": [64, 128],
+  "activation": "ELU",
+  "dropout": 0.5,
+  "num_classes": 10,
+  "optimizer": "Adam",
+  "batch_normalization": True,
+  "seq_length": 100,
 }
 
-def my_train_func():
-    # read the current value of parameter "a" from wandb.config
-    wandb.init()
-    a = wandb.config.a
-
-    wandb.log({"a": a, "accuracy": a + 1})
-
-sweep_id = wandb.sweep(sweep_configuration)
-
-# run the sweep
-wandb.agent(sweep_id, function=my_train_func)
+# 在你初始化SwanLab时传递config字典
+run = swanlab.init(project="config_example", config=config)
 ```
 
-#### 课堂练习 
+访问 config 中的值与在Python中访问其他字典的方式类似：
 
-> 修改以下代码，以便你可以在其上运行超参数优化（sweep）。选择 val_loss 作为你要优化的指标。为 batch_size、epochs 和 learning rate 选择合理的选项。 现在，对于 learning rate，使用一个分布，该分布在 exp(min) 和 exp(max) 之间进行采样，使得自然对数在 min 和 max 之间均匀分布。
+1. 用键名作为索引访问值
 
-将你的解决方案与[此处](https://docs.wandb.ai/guides/sweeps/add-w-and-b-to-your-code)的解决方案进行比较。
-
-```python
-import numpy as np 
-import random
-
-def train_one_epoch(epoch, lr, bs): 
-  acc = 0.25 + ((epoch/30) +  (random.random()/10))
-  loss = 0.2 + (1 - ((epoch-1)/10 +  random.random()/5))
-  return acc, loss
-
-def evaluate_one_epoch(epoch): 
-  acc = 0.1 + ((epoch/20) +  (random.random()/10))
-  loss = 0.25 + (1 - ((epoch-1)/10 +  random.random()/6))
-  return acc, loss
-
-def main():
-    run = wandb.init(project='my-first-sweep')
-
-    # this is key: we define values from `wandb.config` instead of 
-    # defining hard values
-    lr  =  wandb.config.lr
-    bs = wandb.config.batch_size
-    epochs = wandb.config.epochs
-
-    for epoch in np.arange(1, epochs):
-      train_acc, train_loss = train_one_epoch(epoch, lr, bs)
-      val_acc, val_loss = evaluate_one_epoch(epoch)
-
-      wandb.log({
-        'epoch': epoch, 
-        'train_acc': train_acc,
-        'train_loss': train_loss, 
-        'val_acc': val_acc, 
-        'val_loss': val_loss
-      })
+```
+hidden_layer_sizes = swanlab.config["hidden_layer_sizes"]
+hidden_layer_sizes
 ```
 
-### 3. 使用Hydra进行配置
+​	2.用 get() 方法访问值
+
+```
+activation = swanlab.config.get("activation")
+activation
+```
+
+3. 用点号访问值
+
+```
+dropout = swanlab.config.dropout
+dropout
+```
+
+#### 2.4 使用Hydra进行配置
 
 我们不希望用硬编码的路径名、模型名和超参数来训练深度学习模型。我们希望能够使用一个配置文件，根据使用的数据集、模型或配置进行修改。硬编码是什么？是指在编写程序时，直接将具体的值（如字符串、数字、路径等）写入源代码中，而不是通过变量、配置文件、数据库查询或其他动态方法来获取这些值。(这其实不是一个好习惯，但是经常有人这样做)
 

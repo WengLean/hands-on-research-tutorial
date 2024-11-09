@@ -57,3 +57,7 @@
 <div style="text-align: center;">   <img src="./img/wechat.png" alt="Image" width="50%"> </div>
 
 添加微信记得备注，如果是已工作，备注：姓名-城市-岗位。如果学生，备注：姓名-学校-年级。**备注没有自我介绍不通过**
+
+# Star History
+
+<img src="img/star_history.png" style="zoom:50%;" />
